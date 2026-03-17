@@ -17,6 +17,9 @@ DiskUsagePercent:
 TCPServices:
 - Description: "HTTP"
   Port: "localhost:80"
+#- Description: "SMTP"
+#  Port: "mailout.example.com:25"
+#  ErrorThresholdMins: 3
 #- Description: "HTTPS"
 #  Port: "localhost:443"
 #- Description: "MongoDB"

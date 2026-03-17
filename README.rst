@@ -46,6 +46,19 @@ To check for MongoDB running, you would add::
 	- Description: "MongoDB"
 	  Port: "localhost:27017"
 
+If you don't want to fail immediately when a TCP connection cannot be
+established, you can set the ``ErrorThresholdMins`` setting to a different
+value:
+
+	TCPServices:
+	- Description: "SMTP"
+	  Port: "mailout.example.com:25"
+	  ErrorThresholdMins: 3
+
+Although the check will include the failure message in the result, it
+will only set the ``status`` to ``failed`` if that many minutes have passed
+since the last successful connection.
+
 The configuration file is re-read upon every incoming health-check request, so
 you don't have to restart the daemon manually.
 

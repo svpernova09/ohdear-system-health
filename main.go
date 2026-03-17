@@ -20,13 +20,15 @@ type Limits struct {
 }
 
 type Service struct {
-	Description string `mapstructure:"Description"`
-	Port        string `mapstructure:"Port"`
+	Description        string `mapstructure:"Description"`
+	Port               string `mapstructure:"Port"`
+	ErrorThresholdMins int    `mapstructure:"ErrorThresholdMins"`
 }
 
 var (
 	configFileName = "ohdear-health"
 	defaultSecret  = "set-secret-in-config-file"
+	serviceStates  map[string]time.Time
 )
 
 func readConfig() {
@@ -150,18 +152,27 @@ func CheckTcpServices(checkResults *[]CheckResult, tcp_services []Service) {
 	for _, service := range tcp_services {
 		timeout := time.Second
 		conn, err := net.DialTimeout("tcp", service.Port, timeout)
+
 		if err != nil {
+			status := "ok"
+			if service.ErrorThresholdMins == 0 ||
+				time.Now().After(serviceStates[service.Description].Add(time.Minute*time.Duration(service.ErrorThresholdMins))) {
+				status = "failed"
+			}
+
 			checkResult := CheckResult{
 				Name:                service.Description,
 				Label:               fmt.Sprintf("%s Service Availability", service.Description),
-				Status:              "failed",
-				NotificationMessage: fmt.Sprintf("Service %s is not connectable", service.Description),
+				Status:              status,
+				NotificationMessage: fmt.Sprintf("Service %s is not connectable (since %s)", service.Description, serviceStates[service.Description].Format(time.DateTime)),
 				ShortSummary:        "Can't Connect",
 			}
 			*checkResults = append(*checkResults, checkResult)
 		}
 		if conn != nil {
 			defer conn.Close()
+
+			serviceStates[service.Description] = time.Now()
 
 			checkResult := CheckResult{
 				Name:                service.Description,
@@ -224,6 +235,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	readConfig()
+
+	serviceStates = make(map[string]time.Time)
 
 	http.HandleFunc("/health-check", handler)
 	log.Fatal(http.ListenAndServe(viper.GetString("Core.Listen"), nil))
